@@ -3,11 +3,13 @@ from datetime import datetime, timedelta
 import requests
 import os
 
-def download_fnl_file(date_time, save_dir="downloads"):
-    base_url = "https://data.rda.ucar.edu/ds083.2/grib2"
-    date_str = date_time.strftime("%Y/%Y.%m")
-    filename = f"fnl_{date_time.strftime('%Y%m%d_%H_00')}.grib2"
-    url = f"{base_url}/{date_str}/{filename}"
+def download_gfs_file(cycle_datetime, forecast_hour, save_dir="downloads", resolution="0p25"):
+    base_url = "https://data.rda.ucar.edu/ds084.1"
+    date_str = cycle_datetime.strftime("%Y%m%d")
+    year_str = cycle_datetime.strftime("%Y")
+    cycle = cycle_datetime.strftime("%H")
+    filename = f"gfs.{resolution}.{date_str}{cycle}.f{forecast_hour:03d}.grib2"
+    url = f"{base_url}/{year_str}/{date_str}/{filename}"
 
     os.makedirs(save_dir, exist_ok=True)
     file_path = os.path.join(save_dir, filename)
@@ -19,53 +21,63 @@ def download_fnl_file(date_time, save_dir="downloads"):
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
                 return f"✅ Downloaded: {filename}"
-            else:
+            elif r.status_code == 404:
                 return f"❌ Not Found: {filename}"
+            else:
+                return f"❌ Error {r.status_code}: Could not download {filename}"
     except Exception as e:
         return f"❌ Error downloading {filename}: {e}"
 
 # UI
-st.title("FNL Data Downloader")
+st.title("GFS Data Downloader (NCAR RDA ds084.1)")
 
-st.markdown("Specify the download **start and end datetime** (UTC).")
+st.markdown("Specify **start and end cycle** (UTC) and forecast hour range to download GFS (0.25°) GRIB2 files.")
 
-# 日時入力
+# 日時とサイクル指定
 col1, col2 = st.columns(2)
 with col1:
-    start_date = st.date_input("Start Date", datetime(2025, 1, 1).date())
-    start_hour = st.selectbox("Start Hour (UTC)", [0, 6, 12, 18], index=1)
+    start_date = st.date_input("Start Cycle Date", datetime(2023, 1, 1).date())
+    start_hour = st.selectbox("Start Cycle Hour (UTC)", [0, 6, 12, 18], index=0)
 with col2:
-    end_date = st.date_input("End Date", datetime(2025, 1, 2).date())
-    end_hour = st.selectbox("End Hour (UTC)", [0, 6, 12, 18], index=3)
+    end_date = st.date_input("End Cycle Date", datetime(2023, 1, 1).date())
+    end_hour = st.selectbox("End Cycle Hour (UTC)", [0, 6, 12, 18], index=3)
 
-start_dt = datetime.combine(start_date, datetime.min.time()) + timedelta(hours=start_hour)
-end_dt = datetime.combine(end_date, datetime.min.time()) + timedelta(hours=end_hour)
+start_cycle = datetime.combine(start_date, datetime.min.time()) + timedelta(hours=start_hour)
+end_cycle = datetime.combine(end_date, datetime.min.time()) + timedelta(hours=end_hour)
 
-# 保存先ディレクトリ入力
-save_dir = st.text_input("Download folder path", value="//wsl.localhost/Ubuntu-22.04/home/rsaito_wsl/WRF/FNL_DATA")
+st.markdown("Forecast hour range (0-384, step 3)")
+col3, col4 = st.columns(2)
+with col3:
+    fh_start = st.number_input("Start Forecast Hour", value=0, step=3, min_value=0, max_value=384)
+with col4:
+    fh_end = st.number_input("End Forecast Hour", value=48, step=3, min_value=0, max_value=384)
 
-# 実行ボタン
-if start_dt > end_dt:
-    st.error("End datetime must be after start datetime.")
+save_dir = st.text_input("Download folder path", value="downloads")
+
+if start_cycle > end_cycle:
+    st.error("End cycle must be after start cycle.")
+elif fh_start > fh_end:
+    st.error("End forecast hour must be after start forecast hour.")
 else:
     run = st.button("Start Download")
 
     if run:
-        st.info(f"Downloading from {start_dt} to {end_dt} (UTC)...")
-        current = start_dt
-        datetimes = []
-
-        while current <= end_dt:
-            if current.hour in [0, 6, 12, 18]:
-                datetimes.append(current)
+        st.info(f"Downloading cycles from {start_cycle} to {end_cycle} (UTC)...")
+        cycles = []
+        current = start_cycle
+        while current <= end_cycle:
+            cycles.append(current)
             current += timedelta(hours=6)
 
-        total = len(datetimes)
+        total = len(cycles) * ((fh_end - fh_start) // 3 + 1)
         progress = st.progress(0)
+        counter = 0
 
-        for i, dt in enumerate(datetimes):
-            msg = download_fnl_file(dt, save_dir)
-            st.write(msg)
-            progress.progress((i + 1) / total)
+        for cy in cycles:
+            for fh in range(fh_start, fh_end + 1, 3):
+                msg = download_gfs_file(cy, fh, save_dir, "0p25")
+                st.write(msg)
+                counter += 1
+                progress.progress(counter / total)
 
         st.success("Download completed.")
