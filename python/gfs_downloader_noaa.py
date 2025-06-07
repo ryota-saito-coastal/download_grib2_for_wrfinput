@@ -20,26 +20,23 @@ def download_gfs_file(cycle_datetime, forecast_hour, save_dir="downloads", resol
                 with open(file_path, 'wb') as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
-                return f"✅ Downloaded: {filename}"
-            elif r.status_code == 404:
-                return f"❌ Not Found: {filename}"
+                return f"Downloaded: {filename}"
             else:
-                return f"❌ Error {r.status_code}: Could not download {filename}"
+                return f"Not Found: {filename}"
     except Exception as e:
-        return f"❌ Error downloading {filename}: {e}"
+        return f"Error downloading {filename}: {e}"
 
-# UI
-st.title("GFS Data Downloader (NCAR RDA ds084.1)")
 
-st.markdown("Specify **start and end cycle** (UTC) and forecast hour range to download GFS (0.25°) GRIB2 files.")
+st.title("GFS Data Downloader (NOAA)")
 
-# 日時とサイクル指定
+st.markdown("Download GFS forecast GRIB2 files from NOAA's NOMADS server.")
+
 col1, col2 = st.columns(2)
 with col1:
-    start_date = st.date_input("Start Cycle Date", datetime(2023, 1, 1).date())
+    start_date = st.date_input("Start Cycle Date", datetime(2025, 1, 1).date())
     start_hour = st.selectbox("Start Cycle Hour (UTC)", [0, 6, 12, 18], index=0)
 with col2:
-    end_date = st.date_input("End Cycle Date", datetime(2023, 1, 1).date())
+    end_date = st.date_input("End Cycle Date", datetime(2025, 1, 1).date())
     end_hour = st.selectbox("End Cycle Hour (UTC)", [0, 6, 12, 18], index=3)
 
 start_cycle = datetime.combine(start_date, datetime.min.time()) + timedelta(hours=start_hour)
@@ -80,4 +77,4 @@ else:
                 counter += 1
                 progress.progress(counter / total)
 
-        st.success("Download completed.")
+        st.success("All downloads completed.")
