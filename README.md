@@ -48,5 +48,3 @@ date range and output directory.
   enough disk space before starting a long range download.
 - The default save paths in the UI examples point to locations on WSL. Feel
   free to change them to any accessible directory on your system.
-
-

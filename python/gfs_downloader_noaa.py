@@ -3,13 +3,13 @@ from datetime import datetime, timedelta
 import requests
 import os
 
-
 def download_gfs_file(cycle_datetime, forecast_hour, save_dir="downloads", resolution="0p25"):
-    base_url = "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod"
+    base_url = "https://data.rda.ucar.edu/ds084.1"
     date_str = cycle_datetime.strftime("%Y%m%d")
+    year_str = cycle_datetime.strftime("%Y")
     cycle = cycle_datetime.strftime("%H")
-    filename = f"gfs.t{cycle}z.pgrb2.{resolution}.f{forecast_hour:03d}"
-    url = f"{base_url}/gfs.{date_str}/{cycle}/atmos/{filename}"
+    filename = f"gfs.{resolution}.{date_str}{cycle}.f{forecast_hour:03d}.grib2"
+    url = f"{base_url}/{year_str}/{date_str}/{filename}"
 
     os.makedirs(save_dir, exist_ok=True)
     file_path = os.path.join(save_dir, filename)
@@ -72,7 +72,7 @@ else:
 
         for cy in cycles:
             for fh in range(fh_start, fh_end + 1, 3):
-                msg = download_gfs_file(cy, fh, save_dir)
+                msg = download_gfs_file(cy, fh, save_dir, "0p25")
                 st.write(msg)
                 counter += 1
                 progress.progress(counter / total)
