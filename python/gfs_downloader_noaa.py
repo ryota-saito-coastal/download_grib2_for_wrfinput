@@ -2,16 +2,8 @@ import streamlit as st
 from datetime import datetime, timedelta
 import requests
 import os
-from requests.auth import HTTPBasicAuth
 
-def download_gfs_file(
-    cycle_datetime,
-    forecast_hour,
-    save_dir="downloads",
-    resolution="0p25",
-    username=None,
-    password=None
-):
+def download_gfs_file(cycle_datetime, forecast_hour, save_dir="downloads", resolution="0p25"):
     base_url = "https://data.rda.ucar.edu/ds084.1"
     date_str = cycle_datetime.strftime("%Y%m%d")
     year_str = cycle_datetime.strftime("%Y")
@@ -23,30 +15,25 @@ def download_gfs_file(
     file_path = os.path.join(save_dir, filename)
 
     try:
-        with requests.get(url, stream=True, auth=HTTPBasicAuth(username, password)) as r:
+        with requests.get(url, stream=True) as r:
             if r.status_code == 200:
                 with open(file_path, 'wb') as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
-                return f"Downloaded: {filename}"
-            elif r.status_code == 401:
-                return f"Authentication Failed: Please check your NCAR RDA credentials."
+                return f"✅ Downloaded: {filename}"
             elif r.status_code == 404:
-                return f"Not Found: {filename} (HTTP 404)"
+                return f"❌ Not Found: {filename}"
             else:
-                return f"Error {r.status_code}: Could not download {filename}"
+                return f"❌ Error {r.status_code}: Could not download {filename}"
     except Exception as e:
-        return f"Error downloading {filename}: {e}"
+        return f"❌ Error downloading {filename}: {e}"
 
-# Streamlit UI
+# UI
 st.title("GFS Data Downloader (NCAR RDA ds084.1)")
 
-st.markdown("Download GFS forecast GRIB2 files from NCAR RDA (ds084.1) with your NCAR RDA account.")
+st.markdown("Specify **start and end cycle** (UTC) and forecast hour range to download GFS (0.25°) GRIB2 files.")
 
-# NCAR RDA認証情報
-username = st.text_input("NCAR RDA Username")
-password = st.text_input("NCAR RDA Password", type="password")
-
+# 日時とサイクル指定
 col1, col2 = st.columns(2)
 with col1:
     start_date = st.date_input("Start Cycle Date", datetime(2023, 1, 1).date())
@@ -71,8 +58,6 @@ if start_cycle > end_cycle:
     st.error("End cycle must be after start cycle.")
 elif fh_start > fh_end:
     st.error("End forecast hour must be after start forecast hour.")
-elif not username or not password:
-    st.warning("Please enter your NCAR RDA username and password.")
 else:
     run = st.button("Start Download")
 
@@ -90,10 +75,9 @@ else:
 
         for cy in cycles:
             for fh in range(fh_start, fh_end + 1, 3):
-                msg = download_gfs_file(
-                    cy, fh, save_dir, "0p25", username, password
-                )
+                msg = download_gfs_file(cy, fh, save_dir, "0p25")
                 st.write(msg)
                 counter += 1
                 progress.progress(counter / total)
-        st.success("All downloads completed.")
+
+        st.success("Download completed.")
