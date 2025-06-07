@@ -52,7 +52,7 @@ with col3:
 with col4:
     fh_end = st.number_input("End Forecast Hour", value=48, step=3, min_value=0, max_value=384)
 
-save_dir = st.text_input("Download folder path", value="downloads")
+save_dir = st.text_input("Download folder path", value="//wsl.localhost/Ubuntu-22.04/home/rsaito_wsl/WRF/GFS_DATA")
 
 if start_cycle > end_cycle:
     st.error("End cycle must be after start cycle.")
